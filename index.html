@@ -106,6 +106,22 @@ tr:hover td{background:var(--s2);color:var(--tx)}
 /* TIP BOX */
 .tip{background:var(--acd);border:1px solid #2a4a05;border-radius:var(--rs);padding:11px 15px;font-size:13px;color:var(--tx2);margin-bottom:12px}
 .tip strong{color:var(--ac)}
+/* PIN LOCK */
+#pinLock{position:fixed;inset:0;background:#0f0f0f;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column}
+#pinLock.hidden{display:none}
+.pin-box{background:var(--s1);border:1px solid var(--bd);border-radius:20px;padding:36px 32px;text-align:center;width:320px;max-width:90vw}
+.pin-logo{font-family:'DM Serif Display',serif;font-size:28px;color:var(--ac);margin-bottom:4px}
+.pin-sub{font-size:13px;color:var(--tx3);margin-bottom:28px}
+.pin-dots{display:flex;justify-content:center;gap:14px;margin-bottom:24px}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--bd2);background:transparent;transition:all .15s}
+.pin-dot.filled{background:var(--ac);border-color:var(--ac)}
+.pin-dot.error{background:var(--red);border-color:var(--red)}
+.pin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.pin-btn{background:var(--s2);border:1px solid var(--bd);border-radius:12px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:20px;font-weight:500;padding:16px;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;user-select:none}
+.pin-btn:hover,.pin-btn:active{background:var(--s3);border-color:var(--ac);color:var(--ac)}
+.pin-msg{font-size:13px;color:var(--tx3);min-height:20px;margin-top:4px}
+.pin-msg.err{color:var(--red)}
+.pin-msg.ok{color:var(--ac)}
 /* SCROLLBAR */
 ::-webkit-scrollbar{width:5px}
 ::-webkit-scrollbar-track{background:var(--bg)}
@@ -115,7 +131,34 @@ tr:hover td{background:var(--s2);color:var(--tx)}
 </head>
 <body>
 
-<div class="hdr">
+<!-- PIN LOCK SCREEN -->
+<div id="pinLock">
+  <div class="pin-box">
+    <div class="pin-logo">FitLog</div>
+    <div class="pin-sub" id="pinSubtitle">Enter your 4-digit PIN</div>
+    <div class="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-grid">
+      <button class="pin-btn" onclick="pinPress('1')">1</button>
+      <button class="pin-btn" onclick="pinPress('2')">2</button>
+      <button class="pin-btn" onclick="pinPress('3')">3</button>
+      <button class="pin-btn" onclick="pinPress('4')">4</button>
+      <button class="pin-btn" onclick="pinPress('5')">5</button>
+      <button class="pin-btn" onclick="pinPress('6')">6</button>
+      <button class="pin-btn" onclick="pinPress('7')">7</button>
+      <button class="pin-btn" onclick="pinPress('8')">8</button>
+      <button class="pin-btn" onclick="pinPress('9')">9</button>
+      <button class="pin-btn" onclick="pinPress('clear')" style="font-size:13px;color:var(--tx3)">CLR</button>
+      <button class="pin-btn" onclick="pinPress('0')">0</button>
+      <button class="pin-btn" onclick="pinPress('back')" style="font-size:18px">⌫</button>
+    </div>
+    <div class="pin-msg" id="pinMsg"></div>
+  </div>
+</div>
   <div class="logo">FitLog <span>12-week tracker</span></div>
   <div class="hstats">
     <div class="hs"><div class="hs-v" id="hW">106.0</div><div class="hs-l">kg now</div></div>
@@ -928,8 +971,104 @@ window.addEventListener('resize', function(){
   if(pgProg.classList.contains('on')) drawChart();
 });
 
+// ============ PIN LOCK ============
+var pinEntry = '';
+var pinMode = 'enter'; // 'enter', 'setup', 'confirm'
+var pinConfirmBuffer = '';
+var STORED_PIN_KEY = 'fitlog_pin';
+
+function getPIN() { try { return localStorage.getItem(STORED_PIN_KEY); } catch(e){ return null; } }
+function setPIN(p) { try { localStorage.setItem(STORED_PIN_KEY, p); } catch(e){} }
+
+function pinPress(val) {
+  var msg = document.getElementById('pinMsg');
+  msg.textContent = '';
+  msg.className = 'pin-msg';
+
+  if (val === 'clear') { pinEntry = ''; updatePinDots(); return; }
+  if (val === 'back') { pinEntry = pinEntry.slice(0,-1); updatePinDots(); return; }
+  if (pinEntry.length >= 4) return;
+  pinEntry += val;
+  updatePinDots();
+
+  if (pinEntry.length === 4) {
+    setTimeout(function() {
+      if (pinMode === 'setup') {
+        pinConfirmBuffer = pinEntry;
+        pinEntry = '';
+        pinMode = 'confirm';
+        document.getElementById('pinSubtitle').textContent = 'Confirm your PIN';
+        updatePinDots();
+        showPinMsg('Re-enter PIN to confirm', false);
+      } else if (pinMode === 'confirm') {
+        if (pinEntry === pinConfirmBuffer) {
+          setPIN(pinEntry);
+          showPinMsg('PIN set! Welcome to FitLog 🎉', true);
+          setTimeout(unlockApp, 900);
+        } else {
+          pinEntry = ''; pinConfirmBuffer = '';
+          pinMode = 'setup';
+          document.getElementById('pinSubtitle').textContent = 'PINs did not match. Set a new PIN';
+          updatePinDots();
+          showPinMsg('PINs did not match — try again', false);
+          shakeDots();
+        }
+      } else {
+        // enter mode
+        var stored = getPIN();
+        if (pinEntry === stored) {
+          showPinMsg('Welcome back! ✓', true);
+          setTimeout(unlockApp, 600);
+        } else {
+          pinEntry = '';
+          updatePinDots();
+          showPinMsg('Incorrect PIN — try again', false);
+          shakeDots();
+        }
+      }
+    }, 80);
+  }
+}
+
+function updatePinDots() {
+  for (var i = 0; i < 4; i++) {
+    var dot = document.getElementById('pd'+i);
+    dot.className = 'pin-dot' + (i < pinEntry.length ? ' filled' : '');
+  }
+}
+
+function showPinMsg(txt, ok) {
+  var msg = document.getElementById('pinMsg');
+  msg.textContent = txt;
+  msg.className = 'pin-msg' + (ok ? ' ok' : ' err');
+}
+
+function shakeDots() {
+  var dots = document.getElementById('pinLock').querySelectorAll('.pin-dot');
+  dots.forEach(function(d){ d.classList.add('error'); });
+  setTimeout(function(){ dots.forEach(function(d){ d.classList.remove('error'); }); }, 600);
+}
+
+function unlockApp() {
+  document.getElementById('pinLock').classList.add('hidden');
+  init();
+}
+
+function initPinLock() {
+  var stored = getPIN();
+  if (!stored) {
+    pinMode = 'setup';
+    document.getElementById('pinSubtitle').textContent = 'First time? Set a 4-digit PIN';
+    showPinMsg('Choose a PIN to protect your data', false);
+  } else {
+    pinMode = 'enter';
+    document.getElementById('pinSubtitle').textContent = 'Enter your 4-digit PIN';
+  }
+}
+
 // ============ START ============
-init();
+// init() is called only after PIN unlock — see unlockApp()
+initPinLock();
 </script>
 </body>
 </html>
