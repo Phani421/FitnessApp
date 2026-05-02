@@ -184,7 +184,7 @@ tr:hover td{background:var(--s2);color:var(--tx)}
     <div class="ban-s">
       <div class="bss"><div class="bsv" id="bCal">0</div><div class="bsl">kcal eaten</div></div>
       <div class="bss"><div class="bsv" id="bBurn">0</div><div class="bsl">kcal burned</div></div>
-      <div class="bss"><div class="bsv" id="bWat">0</div><div class="bsl">glasses water</div></div>
+      <div class="bss"><div class="bsv" id="bWat">0.0</div><div class="bsl">litres water</div></div>
     </div>
   </div>
   <div class="g2">
@@ -197,11 +197,26 @@ tr:hover td{background:var(--s2);color:var(--tx)}
       <div style="margin-top:8px;font-size:12px;color:var(--tx3)">Weigh first thing in morning, before food.</div>
     </div>
     <div class="card">
-      <div class="ct">Water — target 14 glasses (3.5L)</div>
-      <div id="watergrid" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px"></div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-s btn-sm" id="addWatBtn">+ Glass</button>
-        <button class="btn btn-s btn-sm" id="remWatBtn">− Remove</button>
+      <div class="ct">Water intake — target 3.5L</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+        <button class="btn btn-s" id="remWatBtn" style="font-size:22px;padding:6px 16px;line-height:1">−</button>
+        <div style="flex:1;text-align:center">
+          <div style="font-size:42px;font-weight:600;font-family:'JetBrains Mono',monospace;color:var(--tl)" id="waterDisplay">0.0</div>
+          <div style="font-size:12px;color:var(--tx3);margin-top:2px">litres drunk today</div>
+        </div>
+        <button class="btn btn-s" id="addWatBtn" style="font-size:22px;padding:6px 16px;line-height:1">+</button>
+      </div>
+      <div class="pb-wrap" style="height:8px;margin-bottom:8px">
+        <div id="waterBar" style="height:100%;border-radius:4px;background:var(--tl);transition:width .3s;width:0%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--tx3);margin-bottom:8px">
+        <span>0L</span><span id="waterPct">0%</span><span>3.5L</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-s btn-sm" data-add="0.25">+250ml</button>
+        <button class="btn btn-s btn-sm" data-add="0.5">+500ml</button>
+        <button class="btn btn-s btn-sm" data-add="1.0">+1L</button>
+        <button class="btn btn-s btn-sm" id="watResetBtn" style="margin-left:auto;color:var(--tx3)">Reset</button>
       </div>
     </div>
   </div>
@@ -219,7 +234,7 @@ tr:hover td{background:var(--s2);color:var(--tx)}
       <div class="ci"><div class="cb"></div><span class="cl">Slept 7–8 hours last night</span></div>
       <div class="ci"><div class="cb"></div><span class="cl">Took Vitamin B12</span></div>
       <div class="ci"><div class="cb"></div><span class="cl">Hit 135g protein target</span></div>
-      <div class="ci"><div class="cb"></div><span class="cl">14 glasses water done</span></div>
+      <div class="ci"><div class="cb"></div><span class="cl">3.5L water consumed</span></div>
     </div>
   </div>
   <div class="card">
@@ -412,9 +427,9 @@ tr:hover td{background:var(--s2);color:var(--tx)}
     </tbody></table>
   </div>
 
-  <div class="sl">Gym Starting Weights (Day 1 — 2 May, Saturday)</div>
+  <div class="sl">Gym Starting Weights (Day 1 — Monday 4 May, Push Day A)</div>
   <div class="card">
-    <div style="font-size:13px;color:var(--tx2);margin-bottom:12px">Start here. Increase by 2.5–5 kg every 2 weeks with clean form. <strong style="color:var(--ac)">At 45 — rest 90 seconds between sets. Always 15 min warm-up before lifting.</strong></div>
+    <div style="font-size:13px;color:var(--tx2);margin-bottom:12px">Week 1 schedule: Mon Push · Tue Swim · Wed Badminton · Thu Pull · Fri Cycling · Sat Legs · Sun Rest. Increase weights 2.5–5 kg every 2 weeks with clean form. <strong style="color:var(--ac)">Always 15 min warm-up. Rest 90 sec between sets.</strong></div>
     <table><thead><tr><th>Exercise</th><th>Starting weight</th><th>Sets × Reps</th><th>Increase every</th></tr></thead>
     <tbody>
       <tr><td>Goblet Squat / Barbell Squat</td><td>20–30 kg</td><td>4 × 12</td><td>+2.5 kg / 2 weeks</td></tr>
@@ -469,7 +484,7 @@ tr:hover td{background:var(--s2);color:var(--tx)}
 // ============ DATA ============
 var D = {};
 try { D = JSON.parse(localStorage.getItem('fitlog2') || '{}'); } catch(e) { D = {}; }
-D.startDate = '2026-05-02';
+D.startDate = '2026-05-04';
 if (!D.startWeight) D.startWeight = 106.0;
 if (!D.progress) D.progress = [];
 if (!D.food) D.food = {};
@@ -582,13 +597,13 @@ function init() {
   document.getElementById('hDate').textContent = now.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
   var h = now.getHours();
   document.getElementById('greet').textContent = h<12?'Good morning!':h<17?'Good afternoon!':'Good evening!';
-  var startD = new Date('2026-05-02T00:00:00');
+  var startD = new Date('2026-05-04T00:00:00');
   var nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   var diffMs = nowMidnight - startD;
   if (diffMs < 0) {
     // Before start date — show countdown
     var daysUntil = Math.ceil(-diffMs / 86400000);
-    document.getElementById('daytxt').textContent = 'Plan starts 2 May 2026 · ' + daysUntil + ' day' + (daysUntil===1?'':'s') + ' to go — get ready!';
+    document.getElementById('daytxt').textContent = 'Plan starts 4 May 2026 · ' + daysUntil + ' day' + (daysUntil===1?'':'s') + ' to go — get ready!';
     document.getElementById('hWk').textContent = 'Soon';
   } else {
     var diff = Math.floor(diffMs / 86400000) + 1;
@@ -624,25 +639,39 @@ function updateHeader() {
     document.getElementById('stLost').textContent = (D.startWeight - last.weight).toFixed(1);
     document.getElementById('stGoal').textContent = Math.max(0, last.weight-82).toFixed(1);
   }
-  document.getElementById('bWat').textContent = D.water[todayStr()]||0;
+  document.getElementById('bWat').textContent = ((D.water[todayStr()]||0)).toFixed(1);
 }
 
 // ============ WATER ============
 function renderWater() {
-  var cnt = D.water[todayStr()]||0;
-  document.getElementById('bWat').textContent = cnt;
-  var g = document.getElementById('watergrid');
-  g.innerHTML = '';
-  for (var i=0;i<14;i++) {
-    var d = document.createElement('div');
-    d.style.cssText = 'width:28px;height:36px;border-radius:4px;border:1.5px solid '+(i<cnt?'#4ecdc4':'#333')+';background:'+(i<cnt?'rgba(78,205,196,.15)':'transparent')+';display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;transition:all .15s';
-    d.textContent = i<cnt?'💧':'';
-    (function(idx){ d.addEventListener('click', function(){ D.water[todayStr()]=idx+1; save(); renderWater(); }); })(i);
-    g.appendChild(d);
-  }
+  var val = D.water[todayStr()] || 0;
+  var liters = Math.round(val * 10) / 10;
+  document.getElementById('waterDisplay').textContent = liters.toFixed(1);
+  document.getElementById('bWat').textContent = liters.toFixed(1);
+  var pct = Math.min(100, Math.round((liters / 3.5) * 100));
+  document.getElementById('waterBar').style.width = pct + '%';
+  document.getElementById('waterBar').style.background = pct >= 100 ? 'var(--ac)' : 'var(--tl)';
+  document.getElementById('waterPct').textContent = pct + '%';
+  document.getElementById('waterDisplay').style.color = pct >= 100 ? 'var(--ac)' : 'var(--tl)';
 }
-document.getElementById('addWatBtn').addEventListener('click', function(){ D.water[todayStr()]=Math.min(14,(D.water[todayStr()]||0)+1); save(); renderWater(); });
-document.getElementById('remWatBtn').addEventListener('click', function(){ D.water[todayStr()]=Math.max(0,(D.water[todayStr()]||0)-1); save(); renderWater(); });
+
+function addWater(amount) {
+  var cur = D.water[todayStr()] || 0;
+  D.water[todayStr()] = Math.min(5, Math.round((cur + amount) * 10) / 10);
+  save(); renderWater();
+}
+function removeWater() {
+  var cur = D.water[todayStr()] || 0;
+  D.water[todayStr()] = Math.max(0, Math.round((cur - 0.25) * 10) / 10);
+  save(); renderWater();
+}
+
+document.getElementById('addWatBtn').addEventListener('click', function(){ addWater(0.25); });
+document.getElementById('remWatBtn').addEventListener('click', function(){ removeWater(); });
+document.getElementById('watResetBtn').addEventListener('click', function(){ D.water[todayStr()]=0; save(); renderWater(); });
+document.querySelectorAll('[data-add]').forEach(function(btn){
+  btn.addEventListener('click', function(){ addWater(parseFloat(btn.getAttribute('data-add'))); });
+});
 
 // ============ TODAY WEIGHT ============
 document.getElementById('saveWBtn').addEventListener('click', function(){
@@ -663,22 +692,51 @@ document.getElementById('saveNotesBtn').addEventListener('click', function(){
 
 // ============ TODAY WORKOUT ============
 function renderTodayWkt() {
+  var now = new Date();
+  var startD = new Date('2026-05-04T00:00:00');
+  var nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var el = document.getElementById('todayWkt');
+
+  if (nowMidnight < startD) {
+    // Plan hasn't started — show prep checklist instead
+    var daysLeft = Math.ceil((startD - nowMidnight) / 86400000);
+    var html = '<div style="background:var(--acd);border:1px solid #2a4a05;border-radius:var(--rs);padding:14px;margin-bottom:14px;text-align:center">';
+    html += '<div style="font-size:22px;margin-bottom:6px">🚀</div>';
+    html += '<div style="font-weight:600;color:var(--ac);font-size:15px">Plan starts Monday 4 May</div>';
+    html += '<div style="font-size:13px;color:var(--tx2);margin-top:4px">' + daysLeft + ' day' + (daysLeft===1?'':'s') + ' to go — use this time to prepare</div>';
+    html += '</div>';
+    html += '<div style="font-size:12px;font-weight:500;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Pre-start prep checklist</div>';
+    var preps = [
+      'Buy oats, brown rice, moong dal, rajma',
+      'Stock up on paneer (low fat) and tofu',
+      'Buy Greek yogurt, makhana, roasted chana',
+      'Get whey protein supplement',
+      'Buy Vitamin B12 + Vitamin D3',
+      'Pack gym bag and check equipment',
+      'Plan Monday meals in advance',
+      'Sleep early Sunday — 8 hrs before Day 1'
+    ];
+    preps.forEach(function(p) {
+      html += '<div class="ci"><div class="cb"></div><span class="cl">' + p + '</span></div>';
+    });
+    html += '<div style="margin-top:12px;padding:10px;background:var(--s2);border-radius:var(--rs);font-size:12px;color:var(--tx3)">';
+    html += '💪 <strong style="color:var(--tx)">Day 1 — Monday:</strong> Gym Push Day A · Chest Press · Shoulder Press · Lat Pulldown · Triceps · 55 min';
+    html += '</div>';
+    el.innerHTML = html;
+    el.querySelectorAll('.ci').forEach(function(e){ e.addEventListener('click',function(){ e.classList.toggle('done'); }); });
+    document.getElementById('bBurn').textContent = '—';
+    return;
+  }
+
+  // Plan is active — show correct day's workout
   // Map JS getDay() (0=Sun,1=Mon,...,6=Sat) to SCHED index (0=Mon,...,6=Sun)
-  var jsDay = new Date().getDay();
+  var jsDay = now.getDay();
   var si = jsDay === 0 ? 6 : jsDay - 1;
   var s = SCHED[si];
-  var now = new Date();
-  var startD = new Date('2026-05-02T00:00:00');
-  var nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  var notStarted = nowMidnight < startD;
-  var el = document.getElementById('todayWkt');
   var html = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
   html += '<div style="font-size:20px">'+s.icon+'</div>';
   html += '<div><div style="font-weight:600;color:var(--ac)">'+s.type+'</div>';
   html += '<div style="font-size:12px;color:var(--tx3)">'+s.dur+' · ~'+s.burn+' kcal burned</div></div></div>';
-  if (notStarted) {
-    html += '<div style="padding:12px;background:var(--acd);border:1px solid #2a4a05;border-radius:var(--rs);font-size:13px;color:var(--tx2);margin-bottom:10px">Plan starts <strong style="color:var(--ac)">2 May 2026 (tomorrow)</strong>. This is your Day 1 workout — Gym Legs + Core. Get your gear ready!</div>';
-  }
   s.exs.forEach(function(ex) {
     html += '<div class="ci"><div class="cb"></div><span class="cl">'+ex.n+'</span><span class="cd">'+ex.t+'</span></div>';
   });
